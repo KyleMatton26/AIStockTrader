@@ -1,5 +1,12 @@
 #Creating single file for model
 
+import nltk
+from nltk.stem import WordNetLemmatizer
+
+nltk.download('wordnet')
+nltk.download('punkt') 
+nltk.download('omw-1.4')
+
 folder_path = "./FinancialPhraseBank-v1.0/"
 
 list_of_files = [
@@ -91,3 +98,199 @@ print("Risk 50s: " + str(num_50))
 print("Risk 33s: " + str(num_33))
 print("Risk 25s: " + str(num_25))
 print("Risk 0s: " + str(num_0))
+
+dict_of_sentiments_per_risk = {
+    "num_pos_50": 0, "num_neutral_50": 0, "num_neg_50": 0,
+    "num_pos_33": 0, "num_neutral_33": 0, "num_neg_33": 0,
+    "num_pos_25": 0, "num_neutral_25": 0, "num_neg_25": 0,
+    "num_pos_0": 0, "num_neutral_0": 0, "num_neg_0": 0,
+}
+
+sen_positive_50 = []
+sen_neutral_50 = []
+sen_negative_50 = []
+sen_positive_33 = []
+sen_neutral_33 = []
+sen_negative_33 = []
+sen_positive_25 = []
+sen_neutral_25 = []
+sen_negative_25 = []
+sen_positive_0 = []
+sen_neutral_0 = []
+sen_negative_0 = []
+
+for sentence in list_of_all_sentences:
+    if sentence.find("Risk: 50") != -1:
+        if sentence.find("@positive") != -1:
+            dict_of_sentiments_per_risk["num_pos_50"] += 1
+            sen_positive_50.append(sentence)
+
+        elif sentence.find("@neutral") != -1:
+            dict_of_sentiments_per_risk["num_neutral_50"] += 1
+            sen_neutral_50.append(sentence)
+
+        elif sentence.find("@negative") != -1:
+            dict_of_sentiments_per_risk["num_neg_50"] += 1
+            sen_negative_50.append(sentence)
+
+    elif sentence.find("Risk: 33") != -1:
+        if sentence.find("@positive") != -1:
+            dict_of_sentiments_per_risk["num_pos_33"] += 1
+            sen_positive_33.append(sentence)
+
+        elif sentence.find("@neutral") != -1:
+            dict_of_sentiments_per_risk["num_neutral_33"] += 1
+            sen_neutral_33.append(sentence)
+
+        elif sentence.find("@negative") != -1:
+            dict_of_sentiments_per_risk["num_neg_33"] += 1
+            sen_negative_33.append(sentence)
+
+    elif sentence.find("Risk: 25") != -1:
+        if sentence.find("@positive") != -1:
+            dict_of_sentiments_per_risk["num_pos_25"] += 1
+            sen_positive_25.append(sentence)
+
+        elif sentence.find("@neutral") != -1:
+            dict_of_sentiments_per_risk["num_neutral_25"] += 1
+            sen_neutral_25.append(sentence)
+
+        elif sentence.find("@negative") != -1:
+            dict_of_sentiments_per_risk["num_neg_25"] += 1
+            sen_negative_25.append(sentence)
+
+    elif sentence.find("Risk: 0") != -1:
+        if sentence.find("@positive") != -1:
+            dict_of_sentiments_per_risk["num_pos_0"] += 1
+            sen_positive_0.append(sentence)
+
+        elif sentence.find("@neutral") != -1:
+            dict_of_sentiments_per_risk["num_neutral_0"] += 1
+            sen_neutral_0.append(sentence)
+
+        elif sentence.find("@negative") != -1:
+            dict_of_sentiments_per_risk["num_neg_0"] += 1
+            sen_negative_0.append(sentence)
+
+print(dict_of_sentiments_per_risk)
+
+for i in range(5):
+    print(sen_negative_50[i])
+
+def remove_sentiment_and_risk(sentence):
+
+    #Removes risk from sentence
+    risk_end_index = sentence.find("--") + 3
+    sen_without_risk = sentence[risk_end_index:]
+
+    #Remove sentiment from sentence
+    sentiment_start_index = sen_without_risk.find(".@")
+    sen_without_risk_and_sentiment = sen_without_risk[:sentiment_start_index]
+
+    return sen_without_risk_and_sentiment.strip()
+
+def remove_non_alphanumeric_characters(sentence):
+    characters_to_keep = [".", "%", "$", " ", "-", "+"]
+    new_sentence = ""
+
+    for char in sentence:
+        if char.isalnum() or char in characters_to_keep:
+            new_sentence += str(char)
+
+    return new_sentence
+
+
+#nltk stopword list is problematic. We will have to create our own stopword set. Will finish method once stopword set is created
+
+"""
+def remove_stopwords(sentence):
+    stop_words = set(stopwords.words("english"))
+    print(stop_words)
+
+"""
+
+lematizer = WordNetLemmatizer()
+
+def lemmatize_sentence(sentence):
+    
+    words = nltk.word_tokenize(sentence)
+    lematized_words = []
+
+    for word in words:
+        lematized_word = lematizer.lemmatize(word)
+        lematized_words.append(lematized_word)
+
+    lematized_sentence = " ".join(lematized_words)
+
+    return lematized_sentence
+
+
+for i in range(5):
+    sentence = sen_positive_33[i]
+
+    sen_1 = remove_sentiment_and_risk(sentence)
+    sen_2 = remove_non_alphanumeric_characters(sen_1)
+    sen_3 = lemmatize_sentence(sen_2)
+
+    print(sen_3)
+
+
+
+processed_sen_positive_50 = []
+processed_sen_neutral_50 = []
+processed_sen_negative_50 = []
+processed_sen_positive_33 = []
+processed_sen_neutral_33 = []
+processed_sen_negative_33 = []
+processed_sen_positive_25 = []
+processed_sen_neutral_25 = []
+processed_sen_negative_25 = []
+processed_sen_positive_0 = []
+processed_sen_neutral_0 = []
+processed_sen_negative_0 = []
+
+
+# Function to process and append sentences to corresponding lists
+def process_and_append(sentences, processed_list):
+    for sentence in sentences:
+        sen_1 = remove_sentiment_and_risk(sentence)
+        sen_2 = remove_non_alphanumeric_characters(sen_1)
+        sen_3 = lemmatize_sentence(sen_2)
+        processed_list.append(sen_3)
+
+
+# Process sentences and append to corresponding processed lists
+process_and_append(sen_positive_50, processed_sen_positive_50)
+process_and_append(sen_neutral_50, processed_sen_neutral_50)
+process_and_append(sen_negative_50, processed_sen_negative_50)
+process_and_append(sen_positive_33, processed_sen_positive_33)
+process_and_append(sen_neutral_33, processed_sen_neutral_33)
+process_and_append(sen_negative_33, processed_sen_negative_33)
+process_and_append(sen_positive_25, processed_sen_positive_25)
+process_and_append(sen_neutral_25, processed_sen_neutral_25)
+process_and_append(sen_negative_25, processed_sen_negative_25)
+process_and_append(sen_positive_0, processed_sen_positive_0)
+process_and_append(sen_neutral_0, processed_sen_neutral_0)
+process_and_append(sen_negative_0, processed_sen_negative_0)
+
+print("Finsihed processing all sentences")
+
+
+
+
+#Create 12 different arrays: 1 for each risk with its associated sentiment - DONE
+
+#Create methods to preprocess the data - DONE
+
+#Convert each array into its numerical representation
+
+#Perform SMOTE to get 1000 samples for each group
+
+#Combine sentence array with risk array to create the X, sentiment array is the Y
+
+#Create training and test splits
+
+#Create method to return training and tests splits
+
+# Call it in PyTorchTest
+
