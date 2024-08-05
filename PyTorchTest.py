@@ -1,42 +1,63 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from DatasetCreation import get_sentences_in_file
+import random
+from sklearn.model_selection import train_test_split
+import ast
 
 print(torch.__version__)
 print("Cuda available:", torch.cuda.is_available())
 
 # 1. Data (preparing and loading)
 
-#After getting the sentences in the file, we need to split them into 2 arrays: One which contains just the sentence and the other which contains the sentiment
-sentences_from_file = get_sentences_in_file("SentencesWithRisk.txt")
-sentences = []
-risks = []
-sentiments = []
+# Load the dataset from a file
+def load_dataset_from_file(file_path):
+    dataset = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            line = line.strip()
+            if line:
+                # Safely evaluate the line to a tuple
+                item = ast.literal_eval(line)
+                dataset.append(item)
+    return dataset
 
-for sentence in sentences_from_file:
-    index_of_at_symbol = sentence.rfind("@")
-    index_of_dash = sentence.find("-")
-    new_sentence = sentence[index_of_dash + 3: index_of_at_symbol - 1] #The new sentence will not include the period or the @ symbol at the end of a sentence
-    sentiment = sentence[index_of_at_symbol + 1: len(sentence) - 1] #Sentiment sill start after the @ symbol and go to the end of the string
+dataset = load_dataset_from_file("combined_X_dataset.txt")
+
+random.shuffle(dataset)
+
+X_data = []
+Y_labels = []
+
+def get_data_and_labels(dataset):
+    for item in dataset:
+        X_data.append(item[0])
+        Y_labels.append(item[1])
+
+
+get_data_and_labels(dataset)
+
+for i in range(5):
+    print(X_data[i])
+    print(Y_labels[i])
+    print("------------")
+
+def split_data(X_data, Y_labels, test_size, random_state=42):
+    X_train, X_test, Y_train, Y_test = train_test_split(
+        X_data, Y_labels, 
+        test_size=test_size, 
+        random_state=random_state
+    )
+    return X_train, X_test, Y_train, Y_test
     
-    if sentence[6] != 0:
-        risk = int(sentence[6] + sentence[7])
-    else:
-        risk = 0
-    risks.append(risk)
-    sentences.append(new_sentence)
-    sentiments.append(sentiment)
+test_size = 0.2  # 20% of the data will be used for testing
 
-for i in range(len(sentences_from_file)):
-    if i % 20 == 0:
-        print("Sentence: " + sentences[i])
-        print("Sentiment: " + sentiments[i])
-        print("Risk: " + str(risks[i]))
-        print("")
+# Split the dataset
+X_train, X_test, Y_train, Y_test = split_data(X_data, Y_labels, test_size)
 
-#Next steps: Convert sentences into a numerical format 
-
+# Print out the size of each split to verify
+print(f"Training set size: {len(X_train)}")
+print(f"Test set size: {len(X_test)}")
 
 
 # 2. Build Model (Possibly an LSTM model)
