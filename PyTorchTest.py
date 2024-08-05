@@ -37,9 +37,20 @@ def get_data_and_labels(dataset):
 
 get_data_and_labels(dataset)
 
+label_map = {
+    'positive': 1,
+    'negative': -1,
+    'neutral': 0
+}
+
+Y_labels_numeric = []
+for label in Y_labels:
+    Y_labels_numeric.append(label_map[label])
+
 for i in range(5):
     print(X_data[i])
     print(Y_labels[i])
+    print(Y_labels_numeric[i])
     print("------------")
 
 def split_data(X_data, Y_labels, test_size, random_state=42):
@@ -53,11 +64,14 @@ def split_data(X_data, Y_labels, test_size, random_state=42):
 test_size = 0.2  # 20% of the data will be used for testing
 
 # Split the dataset
-X_train, X_test, Y_train, Y_test = split_data(X_data, Y_labels, test_size)
+X_train, X_test, Y_train, Y_test = split_data(X_data, Y_labels_numeric, test_size)
 
 # Print out the size of each split to verify
 print(f"Training set size: {len(X_train)}")
 print(f"Test set size: {len(X_test)}")
+
+print(X_train[0])
+print(Y_train[0])
 
 
 # 2. Build Model (Possibly an LSTM model)
