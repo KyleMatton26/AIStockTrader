@@ -2,6 +2,11 @@
 
 import nltk
 from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
+from imblearn.over_sampling import SMOTE
+import random
+
 
 nltk.download('wordnet')
 nltk.download('punkt') 
@@ -275,22 +280,211 @@ process_and_append(sen_negative_0, processed_sen_negative_0)
 
 print("Finsihed processing all sentences")
 
+# All datasets
+all_processed_datasets = [
+    (processed_sen_positive_50, 0.50, 'positive'),
+    (processed_sen_neutral_50, 0.50, 'neutral'),
+    (processed_sen_negative_50, 0.50, 'negative'),
+    (processed_sen_positive_33, 0.33, 'positive'),
+    (processed_sen_neutral_33, 0.33, 'neutral'),
+    (processed_sen_negative_33, 0.33, 'negative'),
+    (processed_sen_positive_25, 0.25, 'positive'),
+    (processed_sen_neutral_25, 0.25, 'neutral'),
+    (processed_sen_negative_25, 0.25, 'negative'),
+    (processed_sen_positive_0, 0.00, 'positive'),
+    (processed_sen_neutral_0, 0.00, 'neutral'),
+    (processed_sen_negative_0, 0.00, 'negative')
+]
+
+def convert_sentences_to_numerical_values(sentences):
+    # Create and fit the TfidfVectorizer
+    vectorizer = TfidfVectorizer(stop_words='english', max_features=1000, ngram_range=(1, 2))
+    X = vectorizer.fit_transform(sentences)
+    
+    # Convert to array
+    X_array = X.toarray()
+    
+    # Filter out zeros and return the numerical values
+    numerical_values = []
+    
+    for vector in X_array:
+        non_zero_elements = []
+        
+        for i in range(len(vector)):
+            if vector[i] != 0:
+                non_zero_elements.append(vector[i])
+        
+        numerical_values.append(non_zero_elements)
+    
+    return numerical_values
+
+# Step 1: Convert sentences to numerical values for all datasets
+def convert_all_datasets_to_numerical_values():
+    datasets = [
+        processed_sen_positive_50,
+        processed_sen_neutral_50,
+        processed_sen_negative_50,
+        processed_sen_positive_33,
+        processed_sen_neutral_33,
+        processed_sen_negative_33,
+        processed_sen_positive_25,
+        processed_sen_neutral_25,
+        processed_sen_negative_25,
+        processed_sen_positive_0,
+        processed_sen_neutral_0,
+        processed_sen_negative_0
+    ]
+    
+    numerical_datasets = []
+    
+    for dataset in datasets:
+        numerical_values = convert_sentences_to_numerical_values(dataset)
+        numerical_datasets.append(numerical_values)
+    
+    return numerical_datasets
+
+# Step 2: Find the longest array in each dataset
+def find_longest_in_each_dataset(numerical_datasets):
+    max_lengths = []
+    
+    for numerical_values in numerical_datasets:
+        dataset_max_length = max(len(vector) for vector in numerical_values)
+        max_lengths.append(dataset_max_length)
+    
+    return max_lengths
+
+# Step 3: Find the longest array across all datasets
+def find_overall_max_length(max_lengths):
+    overall_max_length = max(max_lengths)
+    return overall_max_length
+
+# Main processing
+numerical_datasets = convert_all_datasets_to_numerical_values()
+max_lengths = find_longest_in_each_dataset(numerical_datasets)
+overall_max_length = find_overall_max_length(max_lengths)
+
+print("Maximum length of arrays in each dataset:", max_lengths)
+print("Overall maximum length of arrays:", overall_max_length)
+
+# Step 4: Pad arrays to the overall max length
+def pad_arrays_to_max_length(numerical_datasets, max_length):
+    padded_datasets = []
+    
+    for dataset in numerical_datasets:
+        padded_dataset = []
+        for vector in dataset:
+            # Pad the vector if it is shorter than max_length
+            if len(vector) < max_length:
+                padded_vector = np.pad(vector, (0, max_length - len(vector)), 'constant')
+            else:
+                padded_vector = vector
+            padded_dataset.append(padded_vector)
+        padded_datasets.append(padded_dataset)
+    
+    return padded_datasets
+
+def apply_smote(numerical_values, desired_samples=270):
+    if len(numerical_values) >= desired_samples:
+        return numerical_values  # No SMOTE needed
+    
+    # Create dummy samples
+    num_current_samples = len(numerical_values)
+    num_dummy_samples = max(2, desired_samples - num_current_samples)
+    
+    # Create dummy data with the same dimensionality as numerical_values
+    dummy_data = np.zeros((num_dummy_samples, len(numerical_values[0])))
+    
+    # Combine real and dummy data
+    combined_data = np.vstack([numerical_values, dummy_data])
+    
+    # Create labels
+    labels = np.array([1] * num_current_samples + [0] * num_dummy_samples)
+    
+    # Apply SMOTE
+    smote = SMOTE(sampling_strategy='auto', random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(combined_data, labels)
+    
+    # Filter out dummy samples
+    X_resampled = X_resampled[y_resampled == 1]
+    
+    # Print debug information
+    num_total_samples = len(X_resampled)
+    print(f"Number of samples after SMOTE (before slicing): {num_total_samples}")
+    
+    # Ensure we return at least desired_samples
+    if num_total_samples < desired_samples:
+        # If not enough samples, pad with zeros
+        padding = np.zeros((desired_samples - num_total_samples, len(X_resampled[0])))
+        X_resampled = np.vstack([X_resampled, padding])
+    
+    # Return the final number of samples
+    final_samples = X_resampled.tolist()[:desired_samples]
+    print(f"Number of samples returned: {len(final_samples)}")
+    
+    return final_samples
+
+# Function to add risk to numerical arrays
+def add_risk_to_numerical_array(sentences, risk: float):
+    result = []
+    for sentence in sentences:
+        # Convert numpy.ndarray to list and append the risk
+        if isinstance(sentence, np.ndarray):
+            sentence = sentence.tolist()
+        sentence.append(risk)
+        result.append(sentence)
+    return result
+
+# Function to create tuples with sentiment
+def create_tuple_with_sentiment(sentences, sentiment: str):
+    array_of_tuples = []
+    for sentence in sentences:
+        array_of_tuples.append((sentence, sentiment))
+    return array_of_tuples
+
+# Step 6: Process each dataset and append to combined_X_dataset
+combined_X_dataset = []
+
+def process_and_combine_dataset(numerical_values, risk, sentiment):
+    numerical_values_with_risk = add_risk_to_numerical_array(numerical_values, risk)
+    
+    # If the size exceeds 270, randomly select 270 samples
+    if len(numerical_values_with_risk) > 270:
+        numerical_values_with_risk = random.sample(numerical_values_with_risk, 270)
+    
+    tuples_with_sentiment = create_tuple_with_sentiment(numerical_values_with_risk, sentiment)
+    combined_X_dataset.extend(tuples_with_sentiment)
+
+# Convert and pad datasets
+numerical_datasets = convert_all_datasets_to_numerical_values()
+padded_datasets = pad_arrays_to_max_length(numerical_datasets, overall_max_length)
 
 
+# Apply SMOTE and combine datasets
+for i in range(len(padded_datasets)):
+    print(f"Before SMOTE, dataset {i} size: {len(padded_datasets[i])}")
+    smote_applied_values = apply_smote(padded_datasets[i])
+    print(f"After SMOTE, dataset {i} size: {len(smote_applied_values)}")
+    
+    # Print size before adding to combined dataset
+    print(f"Size before adding to combined dataset for dataset {i}: {len(smote_applied_values)}")
+    
+    process_and_combine_dataset(smote_applied_values, all_processed_datasets[i][1], all_processed_datasets[i][2])
 
-#Create 12 different arrays: 1 for each risk with its associated sentiment - DONE
+print("Finished processing and combining all datasets.")
+print(f"Combined dataset size: {len(combined_X_dataset)}")
 
-#Create methods to preprocess the data - DONE
+def save_combined_dataset_to_file(combined_X_dataset, file_path):
+    with open(file_path, 'w') as file:
+        for item in combined_X_dataset:
+            # Convert tuple to string and write to file
+            file.write(f"{item}\n")
 
-#Convert each array into its numerical representation
+# Path to the file where you want to save the dataset
+file_path = 'combined_X_dataset.txt'
 
-#Perform SMOTE to get 1000 samples for each group
+# Save the combined dataset to the file
+save_combined_dataset_to_file(combined_X_dataset, file_path)
 
-#Combine sentence array with risk array to create the X, sentiment array is the Y
+print(f"Combined dataset has been saved to {file_path}.")
 
-#Create training and test splits
-
-#Create method to return training and tests splits
-
-# Call it in PyTorchTest
 
